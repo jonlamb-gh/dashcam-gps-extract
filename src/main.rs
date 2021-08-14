@@ -91,9 +91,27 @@ fn do_main() -> Result<(), Error> {
             }
         };
 
-        println!("{}:{}:{}", gps.hour(), gps.minute(), gps.second());
+        println!(
+            "{}-{}-{} {}:{}:{} == {}",
+            gps.year(),
+            gps.month(),
+            gps.day(),
+            gps.hour(),
+            gps.minute(),
+            gps.second(),
+            gps.datetime(),
+        );
+        let lat_hemi = gps.latitude_hemisphere()?;
+        let lat_dms = gps.latitude();
+        let lat = gps.latitude_deg()?;
+        println!("Lat {}, DMS {}, deg {}", lat_hemi, lat_dms, lat);
 
-        // TODO
+        let lon_hemi = gps.longitude_hemisphere()?;
+        let lon_dms = gps.longitude();
+        let lon = gps.longitude_deg()?;
+        println!("Lon {}, DMS {}, deg {}", lon_hemi, lon_dms, lon);
+
+        println!("Speed {}, bearing {}", gps.speed_mps(), gps.bearing());
     }
 
     Ok(())

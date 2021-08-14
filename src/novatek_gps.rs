@@ -1,5 +1,6 @@
 use byteorder::{BigEndian, ByteOrder, LittleEndian};
-use std::str;
+use chrono::{NaiveDate, NaiveDateTime};
+use std::{fmt, str};
 
 #[derive(Debug, Clone, Eq, PartialEq, err_derive::Error)]
 pub enum Error {
@@ -31,10 +32,22 @@ pub enum LatitudeHemisphere {
     South,
 }
 
+impl fmt::Display for LatitudeHemisphere {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub enum LongitudeHemisphere {
     East,
     West,
+}
+
+impl fmt::Display for LongitudeHemisphere {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -51,15 +64,23 @@ mod field {
     pub const HR: Field = 16..20;
     pub const MIN: Field = 20..24;
     pub const SEC: Field = 24..28;
+    pub const YEAR: Field = 28..32;
+    pub const MONTH: Field = 32..36;
+    pub const DAY: Field = 36..40;
     pub const SAT_LOCK: usize = 40;
     pub const LAT_HEMI: usize = 41;
     pub const LON_HEMI: usize = 42;
+    pub const LAT: Field = 44..48;
+    pub const LON: Field = 48..52;
+    pub const SPEED: Field = 52..56;
+    pub const BEARING: Field = 56..60;
 }
 
 impl<T: AsRef<[u8]>> NovatekGps<T> {
     pub const MIN_SIZE: usize = 128; // TODO - not sure yet, use field once done
     pub const BOX_TYPE: &'static str = "free";
     pub const MAGIC_WORD: &'static str = "GPS ";
+    pub const YEAR_OFFSET: u32 = 2000;
 
     pub fn new_unchecked(buffer: T) -> NovatekGps<T> {
         NovatekGps { buffer }
@@ -166,6 +187,33 @@ impl<T: AsRef<[u8]>> NovatekGps<T> {
     }
 
     #[inline]
+    pub fn year(&self) -> u32 {
+        let data = self.buffer.as_ref();
+        Self::YEAR_OFFSET + LittleEndian::read_u32(&data[field::YEAR])
+    }
+
+    #[inline]
+    pub fn month(&self) -> u32 {
+        let data = self.buffer.as_ref();
+        LittleEndian::read_u32(&data[field::MONTH])
+    }
+
+    #[inline]
+    pub fn day(&self) -> u32 {
+        let data = self.buffer.as_ref();
+        LittleEndian::read_u32(&data[field::DAY])
+    }
+
+    #[inline]
+    pub fn datetime(&self) -> NaiveDateTime {
+        NaiveDate::from_ymd(self.year() as _, self.month(), self.day()).and_hms(
+            self.hour(),
+            self.minute(),
+            self.second(),
+        )
+    }
+
+    #[inline]
     pub fn sat_lock(&self) -> bool {
         let data = self.buffer.as_ref();
         let b = data[field::SAT_LOCK];
@@ -196,6 +244,66 @@ impl<T: AsRef<[u8]>> NovatekGps<T> {
             // 'W'
             0x57 => Ok(LongitudeHemisphere::West),
             _ => Err(Error::InvalidHemisphere),
+        }
+    }
+
+    /// DDDmm.mmmm D=degrees m=minutes
+    #[inline]
+    pub fn latitude(&self) -> f32 {
+        let data = self.buffer.as_ref();
+        LittleEndian::read_f32(&data[field::LAT])
+    }
+
+    #[inline]
+    pub fn latitude_deg(&self) -> Result<f32, Error> {
+        let hemi = self.latitude_hemisphere()?;
+        let invert = matches!(hemi, LatitudeHemisphere::South);
+        Ok(Self::dms_to_deg(self.latitude(), invert))
+    }
+
+    /// DDDmm.mmmm D=degrees m=minutes
+    #[inline]
+    pub fn longitude(&self) -> f32 {
+        let data = self.buffer.as_ref();
+        LittleEndian::read_f32(&data[field::LON])
+    }
+
+    #[inline]
+    pub fn longitude_deg(&self) -> Result<f32, Error> {
+        let hemi = self.longitude_hemisphere()?;
+        let invert = matches!(hemi, LongitudeHemisphere::West);
+        Ok(Self::dms_to_deg(self.longitude(), invert))
+    }
+
+    /// Knots
+    #[inline]
+    pub fn speed(&self) -> f32 {
+        let data = self.buffer.as_ref();
+        LittleEndian::read_f32(&data[field::SPEED])
+    }
+
+    /// m/s
+    #[inline]
+    pub fn speed_mps(&self) -> f32 {
+        self.speed() * 0.514444
+    }
+
+    /// Degrees
+    #[inline]
+    pub fn bearing(&self) -> f32 {
+        let data = self.buffer.as_ref();
+        LittleEndian::read_f32(&data[field::BEARING])
+    }
+
+    #[inline]
+    fn dms_to_deg(dms: f32, invert: bool) -> f32 {
+        let min = dms % 100.0;
+        let deg = dms - min;
+        let out = deg / 100.0 + (min / 60.0);
+        if invert {
+            -1.0 * out
+        } else {
+            out
         }
     }
 }

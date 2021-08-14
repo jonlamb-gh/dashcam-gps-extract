@@ -1,0 +1,19 @@
+[package]
+name = "dashcam-gps-extract"
+version = "0.1.0"
+edition = "2018"
+
+[dependencies]
+log = "0.4"
+env_logger = "0.9"
+exitcode = "1.1"
+err-derive = "0.3"
+byteorder = "1.4"
+
+[dependencies.structopt]
+version = "0.3"
+features = ["color"]
+
+[dependencies.mp4]
+git = "https://github.com/jonlamb-gh/mp4-rust.git"
+branch = "add-novatek-gps-box-support"

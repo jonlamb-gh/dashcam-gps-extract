@@ -4,7 +4,6 @@
 use crate::error::Error;
 use crate::novatek_gps::NovatekGps;
 use crate::opts::Opts;
-use byteorder::{BigEndian, LittleEndian, ReadBytesExt};
 use mp4::{GpsBox, Mp4Box, Mp4Reader};
 use std::fs::File;
 use std::io::{BufReader, Read, Seek, SeekFrom};
@@ -91,27 +90,12 @@ fn do_main() -> Result<(), Error> {
             }
         };
 
-        println!(
-            "{}-{}-{} {}:{}:{} == {}",
-            gps.year(),
-            gps.month(),
-            gps.day(),
-            gps.hour(),
-            gps.minute(),
-            gps.second(),
-            gps.datetime(),
-        );
-        let lat_hemi = gps.latitude_hemisphere()?;
-        let lat_dms = gps.latitude();
+        let datetime = gps.datetime();
         let lat = gps.latitude_deg()?;
-        println!("Lat {}, DMS {}, deg {}", lat_hemi, lat_dms, lat);
-
-        let lon_hemi = gps.longitude_hemisphere()?;
-        let lon_dms = gps.longitude();
         let lon = gps.longitude_deg()?;
-        println!("Lon {}, DMS {}, deg {}", lon_hemi, lon_dms, lon);
-
-        println!("Speed {}, bearing {}", gps.speed_mps(), gps.bearing());
+        let speed = gps.speed_mps();
+        let course = gps.bearing();
+        log::info!("{}, {}, {}, {} m/s, {}°", datetime, lat, lon, speed, course);
     }
 
     Ok(())

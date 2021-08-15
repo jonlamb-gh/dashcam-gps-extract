@@ -21,4 +21,7 @@ pub enum Error {
 
     #[error(display = "GPS error")]
     Gps(#[error(source)] novatek_gps::Error),
+
+    #[error(display = "GPX error")]
+    Gpx(#[error(source)] gpx::errors::Error),
 }

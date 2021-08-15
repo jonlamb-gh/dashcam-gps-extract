@@ -57,6 +57,7 @@ pub struct NovatekGps<T: AsRef<[u8]>> {
 
 mod field {
     type Field = ::core::ops::Range<usize>;
+    type Rest = ::core::ops::RangeFrom<usize>;
 
     pub const BOX_SIZE: Field = 0..4;
     pub const BOX_TYPE: Field = 4..8;
@@ -74,10 +75,11 @@ mod field {
     pub const LON: Field = 48..52;
     pub const SPEED: Field = 52..56;
     pub const BEARING: Field = 56..60;
+    pub const REST: Rest = 60..;
 }
 
 impl<T: AsRef<[u8]>> NovatekGps<T> {
-    pub const MIN_SIZE: usize = 128; // TODO - not sure yet, use field once done
+    pub const MIN_SIZE: usize = field::REST.start;
     pub const BOX_TYPE: &'static str = "free";
     pub const MAGIC_WORD: &'static str = "GPS ";
     pub const YEAR_OFFSET: u32 = 2000;
@@ -255,10 +257,10 @@ impl<T: AsRef<[u8]>> NovatekGps<T> {
     }
 
     #[inline]
-    pub fn latitude_deg(&self) -> Result<f32, Error> {
+    pub fn latitude_deg(&self) -> Result<f64, Error> {
         let hemi = self.latitude_hemisphere()?;
         let invert = matches!(hemi, LatitudeHemisphere::South);
-        Ok(Self::dms_to_deg(self.latitude(), invert))
+        Ok(Self::dms_to_deg(self.latitude() as f64, invert))
     }
 
     /// DDDmm.mmmm D=degrees m=minutes
@@ -269,10 +271,10 @@ impl<T: AsRef<[u8]>> NovatekGps<T> {
     }
 
     #[inline]
-    pub fn longitude_deg(&self) -> Result<f32, Error> {
+    pub fn longitude_deg(&self) -> Result<f64, Error> {
         let hemi = self.longitude_hemisphere()?;
         let invert = matches!(hemi, LongitudeHemisphere::West);
-        Ok(Self::dms_to_deg(self.longitude(), invert))
+        Ok(Self::dms_to_deg(self.longitude() as f64, invert))
     }
 
     /// Knots
@@ -284,8 +286,8 @@ impl<T: AsRef<[u8]>> NovatekGps<T> {
 
     /// m/s
     #[inline]
-    pub fn speed_mps(&self) -> f32 {
-        self.speed() * 0.514444
+    pub fn speed_mps(&self) -> f64 {
+        self.speed() as f64 * 0.514444
     }
 
     /// Degrees
@@ -296,7 +298,7 @@ impl<T: AsRef<[u8]>> NovatekGps<T> {
     }
 
     #[inline]
-    fn dms_to_deg(dms: f32, invert: bool) -> f32 {
+    fn dms_to_deg(dms: f64, invert: bool) -> f64 {
         let min = dms % 100.0;
         let deg = dms - min;
         let out = deg / 100.0 + (min / 60.0);

@@ -24,4 +24,7 @@ pub enum Error {
 
     #[error(display = "GPX error")]
     Gpx(#[error(source)] gpx::errors::Error),
+
+    #[error(display = "Glob pattern error")]
+    Glob(#[error(source)] glob::PatternError),
 }

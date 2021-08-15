@@ -3,14 +3,12 @@ use std::path::PathBuf;
 use std::str::FromStr;
 use structopt::{clap, StructOpt};
 
-const ABOUT: &str = r#"TODO
+const ABOUT: &str = r#"Convert Novatek GPS data embedded into mp4 file(s) into gpx.
 
 Examples:
-    Todo Todo
-    dashcam-gps-extract ...
+    dashcam-gps-extract --output track.gpx file.mp4
 
-    Todo Todo
-    RUST_LOG=debug dashcam-gps-extract ...
+    RUST_LOG=debug dashcam-gps-extract --force --sort gps --output test.gpx 'path/to/*F.mp4'
 "#;
 
 #[derive(Debug, StructOpt)]
@@ -31,7 +29,7 @@ pub struct Opts {
 
     /// Input file path or glob pattern
     #[structopt(name = "input path or glob pattern")]
-    pub input: PathBuf, // TODO - glob pattern support
+    pub input: String,
 }
 
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
